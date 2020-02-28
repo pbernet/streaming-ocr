@@ -1,34 +1,38 @@
 import java.awt.image.BufferedImage
 import java.io.File
+import java.nio.file.Paths
 
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
+import com.joestelmach.natty.Parser
 import com.recognition.software.jdeskew.{ImageDeskew, ImageUtil}
 import javax.imageio.ImageIO
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.util.ImageHelper
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import org.bytedeco.javacv.Java2DFrameUtils
+import opennlp.tools.namefind.{NameFinderME, TokenNameFinderModel}
+import opennlp.tools.sentdetect.{SentenceDetectorME, SentenceModel}
+import opennlp.tools.tokenize.{TokenizerME, TokenizerModel}
+import opennlp.tools.util.Span
 import org.bytedeco.javacpp.indexer.UByteRawIndexer
 import org.bytedeco.javacpp.opencv_core._
+import org.bytedeco.javacv.Java2DFrameUtils
+import org.slf4j.{Logger, LoggerFactory}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import scala.concurrent.ExecutionContextExecutor
-import opennlp.tools.namefind.TokenNameFinderModel
-import opennlp.tools.namefind.NameFinderME
-import opennlp.tools.util.Span
-import opennlp.tools.tokenize.TokenizerModel
-import opennlp.tools.tokenize.TokenizerME
-import opennlp.tools.sentdetect.SentenceDetectorME
-import opennlp.tools.sentdetect.SentenceModel
-import com.joestelmach.natty.Parser
+import scala.collection.immutable.Stream
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
+
 
 object Main extends App with OCR with Spell with NLP with Natty {
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
   implicit val system: ActorSystem = ActorSystem("ocr")
   implicit val executor: ExecutionContextExecutor = system.dispatcher
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -97,14 +101,14 @@ object Main extends App with OCR with Spell with NLP with Natty {
   })
 
   def spellCheck = Flow[String].map(ocr => {
-    println(ocr)
+    println(s"Before spellCheck: $ocr")
     import scala.collection.JavaConverters._
     val words: Set[String] = ocr.replaceAll("-\n", "").replaceAll("\n", " ").replaceAll("-"," ").split("\\s+")
       .map(_.replaceAll(
       "[^a-zA-Z'’\\d\\s]", "") // Remove most punctuation
       .trim)
       .filter(!_.isEmpty).toSet
-      println(words)
+      println(s"words: $words")
     val misspelled = words.filter(word => !speller.isCorrect(word))
     val suggestions: Set[Map[String, List[String]]] = misspelled.map(mis => {
       Map(mis -> speller.suggest(mis).asScala.toList)
@@ -112,7 +116,8 @@ object Main extends App with OCR with Spell with NLP with Natty {
     OcrSuggestions(ocr, suggestions)
   })
 
-  def imageOcr = Flow[BufferedImage].map(tesseract.doOCR)
+  //Limit is 2 on my mac, if set higher it crashes
+  def imageOcr = Flow[BufferedImage].mapAsync(2)(each => Future(tesseract().doOCR(each)))
 
   def imageSink(path:String, format:String = "png") = Sink.foreachParallel[BufferedImage](4)(bi => {
     ImageIO.write(bi, format, new File(path))
@@ -125,7 +130,7 @@ object Main extends App with OCR with Spell with NLP with Natty {
     .via(imageEnhance).alsoTo(imageSink("enhanced.png"))
     .via(imageDeSkew()).alsoTo(imageSink("deskew.png"))
 
-  val ocrFlow = imageOcr.via(spellCheck).via(extractPersons).via(extractDates)
+  val ocrFlow: Flow[BufferedImage, OcrSuggestionsPersons, NotUsed] = imageOcr.via(spellCheck).via(extractPersons)
 
   val staticResources =
     get {
@@ -140,16 +145,67 @@ object Main extends App with OCR with Spell with NLP with Natty {
     post {
       fileUpload("fileUpload") {
         case (_, fileStream) =>
+          logger.info("Got request")
           val inputStream = fileStream.runWith(StreamConverters.asInputStream())
           val image = ImageIO.read(inputStream)
           val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
-
+          logger.info("Finished processing")
           complete(ocr)
       }
     }
   } ~ staticResources
 
-  Http().bindAndHandle(route, "localhost", 8080)
+  def logWhen(done: Future[Done], each: Int) = {
+    done.onComplete {
+      case Success(_) =>
+        logger.info(s"Success: $each")
+      case Failure(e) =>
+        logger.error(s"Failure: ${e.getMessage}")
+    }
+  }
+
+  val resourceFileName = "test_ocr.jpg"
+  val (address, port) = ("127.0.0.1", 8080)
+
+  val filesToUpload: Source[File, NotUsed] =
+  //Unbounded stream. Limit for testing purposes by appending eg .take(5)
+    Source(Stream.continually(Paths.get(s"./src/main/resources/$resourceFileName").toFile)).take(2)
+
+
+  (1 to 10).par.foreach(each =>  {
+    logger.info(s"Start processing: $each")
+  val image = ImageIO.read(Paths.get(s"./src/main/resources/$resourceFileName").toFile)
+  val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
+  val done: Future[Done] = ocr.runWith(Sink.ignore)
+  logWhen(done, each)
+  }
+  )
+
+
+//  filesToUpload.runForeach(each => {
+//    logger.info("Start processing")
+//    val image = ImageIO.read(each)
+//    val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
+//    val done: Future[Done] = ocr.runWith(Sink.ignore)
+//    logWhen(done)
+//    }
+//  )
+
+
+
+
+
+//  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+//  bindingFuture.onComplete {
+//    case Success(b) =>
+//      println("Server started, listening on: " + b.localAddress)
+//    case Failure(e) =>
+//      println(s"Server could not bind to localhost:8080. Exception message: ${e.getMessage}")
+//      system.terminate()
+//  }
+
+  
+
 }
 
 case class OcrSuggestions(ocr:String, suggestions: Set[Map[String, List[String]]])
@@ -157,8 +213,13 @@ case class OcrSuggestionsPersons(ocr:String, suggestions: Set[Map[String, List[S
 case class OcrSuggestionsPersonsDates(ocr:String, suggestions: Set[Map[String, List[String]]], persons: List[String], dates: List[(List[String], String)])
 
 trait OCR {
-  lazy val tesseract: Tesseract = new Tesseract
-  tesseract.setDatapath("/usr/local/Cellar/tesseract/4.1.1/share/tessdata/")
+
+  //It looks as if we need separate "Tesseract contexts"
+  def tesseract(): Tesseract = {
+    val tess = new Tesseract
+    tess.setDatapath("/usr/local/Cellar/tesseract/4.1.1/share/tessdata/")
+    tess
+  }
 }
 
 trait Spell {

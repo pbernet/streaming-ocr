@@ -21,13 +21,16 @@ val bytedecoPresetLibs = Seq(
 
 libraryDependencies ++= bytedecoPresetLibs
 
-libraryDependencies += "net.sourceforge.tess4j" % "tess4j" % "4.3.1"
+libraryDependencies += "net.sourceforge.tess4j" % "tess4j" % "4.5.1"
 libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.12"
+libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % "2.5.12"
 libraryDependencies += "com.typesafe.akka" %% "akka-http"   % "10.1.1"
 libraryDependencies += "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.1"
 libraryDependencies += "com.atlascopco" % "hunspell-bridj" % "1.0.4"
 libraryDependencies += "org.apache.opennlp" % "opennlp-tools" % "1.9.1"
 libraryDependencies += "com.joestelmach" % "natty" % "0.13"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
+
 
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
