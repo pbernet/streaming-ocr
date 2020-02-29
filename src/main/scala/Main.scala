@@ -2,7 +2,6 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Paths
 
-import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
@@ -11,7 +10,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.FileInfo
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{FileIO, Flow, Sink, Source, StreamConverters}
+import akka.{Done, NotUsed}
 import com.joestelmach.natty.Parser
 import com.recognition.software.jdeskew.{ImageDeskew, ImageUtil}
 import javax.imageio.ImageIO
@@ -144,10 +144,15 @@ object Main extends App with OCR with Spell with NLP with Natty {
 
   val route = path("image" / "ocr") {
     post {
-      fileUpload("fileUpload") {
-        case (info: FileInfo, fileStream) =>
-          logger.info(s"Got request: ${info.fileName}")
-          val inputStream = fileStream.runWith(StreamConverters.asInputStream())
+
+      def tempDestination(fileInfo: FileInfo): File = File.createTempFile(fileInfo.fileName, ".tmp.server")
+
+      // fileUpload hangs with latest akka http version, revert to tmp storing
+      storeUploadedFile("fileUpload", tempDestination) {
+        case (_, uploadedFile: File) =>
+          logger.info(s"Stored uploaded tmp file: ${uploadedFile.getName}")
+
+          val inputStream = FileIO.fromPath(uploadedFile.toPath).runWith(StreamConverters.asInputStream())
           val image = ImageIO.read(inputStream)
           val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
           complete(ocr)
