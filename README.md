@@ -1,3 +1,12 @@
+## PoC for parallelization
+Great stuff. Thx!
+
+This fork contains a PoC for parallelization and thus puts the app into the pressure cooker.
+
+The two main classes may be started directly from the IDE.
+[GraalVM](https://www.graalvm.org/downloads) was used to run it locally on Mac.
+
+
 ## Up and running | Mac OS
 
 [OCR with Akka, Tesseract, and JavaCV | Part 1](https://towardsdatascience.com/ocr-with-akka-tesseract-and-javacv-part-1-702781fc73ca)

@@ -9,7 +9,6 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.FileInfo
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Flow, Sink, Source, StreamConverters}
 import akka.{Done, NotUsed}
 import com.joestelmach.natty.Parser
@@ -36,7 +35,6 @@ object Main extends App with OCR with Spell with NLP with Natty {
 
   implicit val system: ActorSystem = ActorSystem("ocr")
   implicit val executor: ExecutionContextExecutor = system.dispatcher
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val jsonStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
   import MyJsonProtocol._
 

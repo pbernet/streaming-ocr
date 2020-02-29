@@ -8,7 +8,6 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{HttpRequest, RequestEntity, _}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol
@@ -20,7 +19,6 @@ import scala.util.{Failure, Success}
 object StreamingUploadClient extends App with DefaultJsonProtocol with SprayJsonSupport {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
   implicit val system = ActorSystem("StreamingUploadClient")
-  implicit val materializerServer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
   val resourceFileName = "test_ocr.jpg"
