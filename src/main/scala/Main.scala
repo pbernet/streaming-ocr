@@ -4,10 +4,12 @@ import java.nio.file.Paths
 
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.directives.FileInfo
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
 import com.joestelmach.natty.Parser
@@ -25,7 +27,6 @@ import org.bytedeco.javacv.Java2DFrameUtils
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import scala.collection.immutable.Stream
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
@@ -144,12 +145,11 @@ object Main extends App with OCR with Spell with NLP with Natty {
   val route = path("image" / "ocr") {
     post {
       fileUpload("fileUpload") {
-        case (_, fileStream) =>
-          logger.info("Got request")
+        case (info: FileInfo, fileStream) =>
+          logger.info(s"Got request: ${info.fileName}")
           val inputStream = fileStream.runWith(StreamConverters.asInputStream())
           val image = ImageIO.read(inputStream)
           val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
-          logger.info("Finished processing")
           complete(ocr)
       }
     }
@@ -167,45 +167,27 @@ object Main extends App with OCR with Spell with NLP with Natty {
   val resourceFileName = "test_ocr.jpg"
   val (address, port) = ("127.0.0.1", 8080)
 
-  val filesToUpload: Source[File, NotUsed] =
-  //Unbounded stream. Limit for testing purposes by appending eg .take(5)
-    Source(Stream.continually(Paths.get(s"./src/main/resources/$resourceFileName").toFile)).take(2)
-
-
-  (1 to 10).par.foreach(each =>  {
-    logger.info(s"Start processing: $each")
-  val image = ImageIO.read(Paths.get(s"./src/main/resources/$resourceFileName").toFile)
-  val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
-  val done: Future[Done] = ocr.runWith(Sink.ignore)
-  logWhen(done, each)
+  private def parallelizationPoC() = {
+    (1 to 10).par.foreach(each => {
+      logger.info(s"Start processing: $each")
+      val image = ImageIO.read(Paths.get(s"./src/main/resources/$resourceFileName").toFile)
+      val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
+      val done: Future[Done] = ocr.runWith(Sink.ignore)
+      logWhen(done, each)
+    })
   }
-  )
 
+  //PoC to prove parallelization
+  //parallelizationPoC()
 
-//  filesToUpload.runForeach(each => {
-//    logger.info("Start processing")
-//    val image = ImageIO.read(each)
-//    val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
-//    val done: Future[Done] = ocr.runWith(Sink.ignore)
-//    logWhen(done)
-//    }
-//  )
-
-
-
-
-
-//  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-//  bindingFuture.onComplete {
-//    case Success(b) =>
-//      println("Server started, listening on: " + b.localAddress)
-//    case Failure(e) =>
-//      println(s"Server could not bind to localhost:8080. Exception message: ${e.getMessage}")
-//      system.terminate()
-//  }
-
-  
-
+  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+  bindingFuture.onComplete {
+    case Success(b) =>
+      println("Server started, listening on: " + b.localAddress)
+    case Failure(e) =>
+      println(s"Server could not bind to localhost:8080. Exception message: ${e.getMessage}")
+      system.terminate()
+  }
 }
 
 case class OcrSuggestions(ocr:String, suggestions: Set[Map[String, List[String]]])

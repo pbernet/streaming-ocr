@@ -46,12 +46,12 @@
         var output = document.getElementById('output');
         var suggestions = document.getElementById('suggestions');
         var persons = document.getElementById('persons');
-        var dates = document.getElementById('dates');
+        //var dates = document.getElementById('dates');
 
         status.innerHTML = 'Uploading';
         suggestions.innerHTML = '';
         persons.innerHTML = '';
-        dates.innerHTML = '';
+        //dates.innerHTML = '';
         output.innerHTML = '';
 
         fetch(event.target.action, {
@@ -78,12 +78,12 @@
             });
             persons.innerHTML += '</ul>';
 
-            dates.innerHTML = '<ul>';
-            body[0].dates.forEach((date) => {
-                dates.innerHTML += '<li>' + date[1] + ' - ' + date[0] + '</li>';
-                ocrText = ocrText.replace(new RegExp(date[1], 'g'), '<span class="date">' + date[1] + '</span>');
-            });
-            dates.innerHTML += '</ul>';
+            // dates.innerHTML = '<ul>';
+            // body[0].dates.forEach((date) => {
+            //     dates.innerHTML += '<li>' + date[1] + ' - ' + date[0] + '</li>';
+            //     ocrText = ocrText.replace(new RegExp(date[1], 'g'), '<span class="date">' + date[1] + '</span>');
+            // });
+            // dates.innerHTML += '</ul>';
 
             output.innerHTML = ocrText;
         }).catch((error) => {
