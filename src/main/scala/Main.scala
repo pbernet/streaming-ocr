@@ -150,9 +150,19 @@ object Main extends App with OCR with Spell with NLP with Natty {
         case (_, uploadedFile: File) =>
           logger.info(s"Stored uploaded tmp file: ${uploadedFile.getName}")
 
+          def hapiFlow = Flow[OcrSuggestionsPersons]
+            .map(each => {
+              HapiClient.prepareAndUpload(each, uploadedFile.toPath.toString)
+              each
+            })
+
+
           val inputStream = FileIO.fromPath(uploadedFile.toPath).runWith(StreamConverters.asInputStream())
           val image = ImageIO.read(inputStream)
-          val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
+          val ocr = Source.single(image)
+            .via(imagePreProcessFlow)
+            .via(ocrFlow)
+            .via(hapiFlow)
           complete(ocr)
       }
     }

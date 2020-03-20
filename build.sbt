@@ -31,7 +31,9 @@ libraryDependencies += "org.apache.opennlp" % "opennlp-tools" % "1.9.1"
 libraryDependencies += "com.joestelmach" % "natty" % "0.13"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
-
+libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-structures-r4" % "4.2.0"
+libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-client" % "4.2.0"
+libraryDependencies += "org.apache.commons" % "commons-text" % "1.8"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 resolvers += Resolver.mavenLocal
