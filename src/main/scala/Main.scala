@@ -30,6 +30,10 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 
+/**
+ * Start [[StreamingUploadClient]] to generate traffic
+ *
+ */
 object Main extends App with OCR with Spell with NLP with Natty {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -118,8 +122,8 @@ object Main extends App with OCR with Spell with NLP with Natty {
   //Limit is 2 on my mac, if set higher it crashes
   def imageOcr = Flow[BufferedImage].mapAsync(2)(each => Future(tesseract().doOCR(each)))
 
-  def imageSink(path:String, format:String = "png") = Sink.foreachParallel[BufferedImage](4)(bi => {
-    ImageIO.write(bi, format, new File(path))
+  def imageSink(path:String, format:String = "png") = Sink.foreachAsync[BufferedImage](4)(bi => {
+    Future(ImageIO.write(bi, format, new File(path)))
   })
 
   val imageEnhance = bufferedImageToMat.via(enhanceMat).via(matToBufferedImage)
@@ -150,10 +154,11 @@ object Main extends App with OCR with Spell with NLP with Natty {
         case (_, uploadedFile: File) =>
           logger.info(s"Stored uploaded tmp file: ${uploadedFile.getName}")
 
-          def hapiFlow = Flow[OcrSuggestionsPersons]
-            .map(each => {
+          //TODO Handle retry
+          val hapiFlow = Flow[OcrSuggestionsPersons]
+            .mapAsync(1)(each => {
               HapiClient.prepareAndUpload(each, uploadedFile.toPath.toString)
-              each
+              Future(each)
             })
 
 

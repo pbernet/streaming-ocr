@@ -1,9 +1,14 @@
 ## PoC for parallelization
-Great stuff. Thx!
 
-This fork contains a PoC for parallelization and thus puts the app into the pressure cooker.
+Additional features of this fork:
+* Bumped libs
+* PoC for parallelization
+* Assuming the ocr contains medical content: upload to FHIR R4 server: http://hapi.fhir.org/baseR4
 
-The two main classes may be started directly from the IDE.
+Tmp removed feature:
+* Date extraction via Natty parser
+
+The two main classes may be started directly from the IntelliJ IDE.
 [GraalVM](https://www.graalvm.org/downloads) was used to run it locally on Mac.
 
 

@@ -15,21 +15,16 @@ import java.util.Base64;
 
 
 /**
- * Upload a document (and observation) via FHIR R4 to HAPI server:
+ * Upload FHIR document (and observation) HAPI server:
  * http://hapi.fhir.org/baseR4
  * and link to patient
+ * <p>
  *
  * TODOs
- * - Find a graceful way to handle case when upload fails
- *
- * Optional:
- * - Button on GUI to give OK for upload?
- * - How to tmp store ocr content - caffeine?
- * - Feed OCR text to elasticsearch - search feature
- *
+ * - Handle various "not happy paths"
+ * - Feedback on GUI about the processing stages
+ * - Search: Feed OCR content to elasticsearch
  **/
-
-
 public class HapiClient {
     private static final Logger logger = LoggerFactory.getLogger(HapiClient.class);
 
@@ -62,12 +57,6 @@ public class HapiClient {
 
     private static DocumentReference readDocumentReference(IIdType id) {
         IGenericClient client = ctx.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
-
-// TODO How to get the doc reference from the bundle?
-//        IBaseBundle bundle = client.search().forResource(DocumentReference.class)
-//                .where(DocumentReference.IDENTIFIER.exactly().identifier(id.getValue()))
-//                .prettyPrint()
-//                .execute();
 
         //Verify by reading. TODO find out on attributes to compare
         DocumentReference doc = client.read().resource(DocumentReference.class).withId(id).execute();
@@ -123,8 +112,8 @@ public class HapiClient {
         return false;
     }
 
-
-    public static void main(String[] args) throws IOException {
+    //PoC
+    public static void main(String[] args) {
 
         String identifierBusiness = "aBusinessID";
         Patient patient = createTestPatient(identifierBusiness);
@@ -178,13 +167,6 @@ public class HapiClient {
         //TODO How to get the doc id from the bundle response to check?
 
         System.out.println("Response 1st element id: " + resp.getEntry().get(0).getLink());
-
-        // Create dedicated DocumentReference
-//        DocumentReference docDedicated = createDocumentReference(true);
-//        IIdType id = writeDocumentReference(docDedicated);
-//        readDocumentReference(id);
-
-
     }
 
     private static Observation createTestObservation(Patient patient) {
@@ -225,5 +207,4 @@ public class HapiClient {
         patient.setId(IdDt.newRandomUuid());
         return patient;
     }
-
 }
