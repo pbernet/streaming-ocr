@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 
 
@@ -67,13 +65,12 @@ public class HapiClient {
     }
 
 
-    public static boolean prepareAndUpload(OcrSuggestionsPersons ocrSuggestionsPersons, String pathToOrigFile) {
+    public static boolean prepareAndUpload(OcrSuggestionsPersons ocrSuggestionsPersons, FileInputStream origFile) {
         String identifierBusiness = "ocrTestPatient";
 
         Patient patient = createTestPatient(identifierBusiness);
 
-        Path path = Paths.get(pathToOrigFile);
-        try (FileInputStream fis = new FileInputStream(path.toFile())) {
+        try (FileInputStream fis = origFile) {
             Base64.Encoder enc = Base64.getEncoder();
             DocumentReference doc = createDocumentReference(patient, ocrSuggestionsPersons.ocr(), enc.encode(fis.readAllBytes()));
 

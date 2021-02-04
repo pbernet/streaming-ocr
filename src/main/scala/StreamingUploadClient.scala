@@ -30,7 +30,7 @@ object StreamingUploadClient extends App with DefaultJsonProtocol with SprayJson
 
     def filesToUpload(): Source[File, NotUsed] =
       //Unbounded stream. Limit for testing purposes by appending eg .take(10)
-      Source(Stream.continually(Paths.get(s"./src/main/resources/$resourceFileName").toFile)).take(10)
+      Source(LazyList.continually(Paths.get(s"src/main/resources/$resourceFileName").toFile)).take(10)
 
     val poolClientFlowUpload =
       Http().cachedHostConnectionPool[File](address, port)
@@ -60,7 +60,7 @@ object StreamingUploadClient extends App with DefaultJsonProtocol with SprayJson
           ioresult =>
             logger.info(s"Download result file: ${localFile.getAbsoluteFile} finished (${ioresult.count} bytes)")
             val fileSource = scala.io.Source.fromFile(localFile)
-            logger.info(s"OCR content: ${fileSource.getLines.mkString}")
+            logger.info(s"OCR content: ${fileSource.getLines().mkString}")
             fileSource.close()
         }
       case (Failure(ex), fileToUpload) =>

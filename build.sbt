@@ -8,6 +8,7 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xlint")
 
 val akkaVersion = "2.6.10"
 val akkaHTTPVersion = "10.2.2"
+val hapiFHIRVersion = "5.2.1"
 
 // Platform classifier for native library dependencies
 val platform = org.bytedeco.javacpp.Loader.getPlatform
@@ -36,8 +37,8 @@ libraryDependencies += "org.apache.opennlp" % "opennlp-tools" % "1.9.1"
 libraryDependencies += "com.joestelmach" % "natty" % "0.13"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
-libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-structures-r4" % "4.2.0"
-libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-client" % "4.2.0"
+libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-structures-r4" % hapiFHIRVersion
+libraryDependencies += "ca.uhn.hapi.fhir" % "hapi-fhir-client" % hapiFHIRVersion
 libraryDependencies += "org.apache.commons" % "commons-text" % "1.8"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
