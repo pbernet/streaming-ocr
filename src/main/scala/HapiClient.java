@@ -26,7 +26,7 @@ import java.util.Base64;
  * - Search: Feed OCR content to elasticsearch
  **/
 public class HapiClient {
-    private static final Logger logger = LoggerFactory.getLogger(HapiClient.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(HapiClient.class);
 
     public static final byte[] SOME_BYTES = {1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1};
 
@@ -46,7 +46,8 @@ public class HapiClient {
                 .setContentType("image/jpg");
         attachment.setData(picBase64);
 
-        logger.info(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(documentReference));
+        LOGGER.info("Created DocumentReference with subject: {}", documentReference.getSubject());
+        LOGGER.debug(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(documentReference));
         return documentReference;
     }
 
@@ -60,7 +61,7 @@ public class HapiClient {
 
         //Verify by reading. TODO find out on attributes to compare
         DocumentReference doc = client.read().resource(DocumentReference.class).withId(id).execute();
-        logger.info("Read doc with ID: " + doc.getId());
+        LOGGER.info("Read doc with ID: " + doc.getId());
         return doc;
 
     }
@@ -95,14 +96,13 @@ public class HapiClient {
                     .setMethod(Bundle.HTTPVerb.POST);
 
             // Log the request. Be aware of the base64 content
-            logger.debug(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+            LOGGER.debug(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
 
             // Create a client and post the transaction to the server
             IGenericClient client = ctx.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
             Bundle resp = client.transaction().withBundle(bundle).execute();
 
-            // Log the response
-            logger.info(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(resp));
+            LOGGER.info("Response: {}", ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(resp));
             //TODO Find a better criteria, and handle not happy path
             return resp != null;
         } catch (IOException ioe) {

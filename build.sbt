@@ -3,8 +3,11 @@ version := "0.1"
 
 val javacppVersion = "1.5"
 version      := javacppVersion
-scalaVersion := "2.12.10"
+scalaVersion := "2.13.3"
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xlint")
+
+val akkaVersion = "2.6.10"
+val akkaHTTPVersion = "10.2.2"
 
 // Platform classifier for native library dependencies
 val platform = org.bytedeco.javacpp.Loader.getPlatform
@@ -21,11 +24,13 @@ val bytedecoPresetLibs = Seq(
 
 libraryDependencies ++= bytedecoPresetLibs
 
+libraryDependencies += "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
+
 libraryDependencies += "net.sourceforge.tess4j" % "tess4j" % "4.5.4"
-libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.6.3"
-libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % "2.6.3"
-libraryDependencies += "com.typesafe.akka" %% "akka-http"   % "10.1.11"
-libraryDependencies += "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.11"
+libraryDependencies += "com.typesafe.akka" %% "akka-stream" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-http"   % akkaHTTPVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-http-spray-json" % akkaHTTPVersion
 libraryDependencies += "com.atlascopco" % "hunspell-bridj" % "1.0.4"
 libraryDependencies += "org.apache.opennlp" % "opennlp-tools" % "1.9.1"
 libraryDependencies += "com.joestelmach" % "natty" % "0.13"

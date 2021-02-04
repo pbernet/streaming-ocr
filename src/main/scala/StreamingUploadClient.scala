@@ -1,6 +1,3 @@
-import java.io.File
-import java.nio.file.Paths
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -12,6 +9,8 @@ import akka.stream.scaladsl.{FileIO, Source}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol
 
+import java.io.File
+import java.nio.file.Paths
 import scala.concurrent.Future
 import scala.sys.process.Process
 import scala.util.{Failure, Success}
@@ -59,9 +58,9 @@ object StreamingUploadClient extends App with DefaultJsonProtocol with SprayJson
         val result = response.entity.dataBytes.runWith(FileIO.toPath(Paths.get(localFile.getAbsolutePath)))
         result.map {
           ioresult =>
-            logger.info(s"Download file: ${localFile.getAbsoluteFile} finished (${ioresult.count} bytes)")
+            logger.info(s"Download result file: ${localFile.getAbsoluteFile} finished (${ioresult.count} bytes)")
             val fileSource = scala.io.Source.fromFile(localFile)
-            logger.info("Payload: " + fileSource.getLines.mkString)
+            logger.info(s"OCR content: ${fileSource.getLines.mkString}")
             fileSource.close()
         }
       case (Failure(ex), fileToUpload) =>

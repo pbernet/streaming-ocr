@@ -3,7 +3,8 @@
 Additional features of this fork:
 * Bumped libs
 * PoC for parallelization. Spoiler: Does not speed up things
-* Assuming the ocr contains medical content: upload to FHIR R4 server: http://hapi.fhir.org/baseR4
+* HTTP upload server as separate entry point  
+* Assuming the ocr contains medical content: upload `DocumentReference` to FHIR R4 server: http://hapi.fhir.org/baseR4
 
 Tmp removed feature:
 * Date extraction via Natty parser

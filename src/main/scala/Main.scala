@@ -25,13 +25,13 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Paths
 import javax.imageio.ImageIO
+import scala.collection.parallel.CollectionConverters._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
-
 /**
  * Start [[StreamingUploadClient]] to generate traffic via HTTP
- * or comment in method parallelizationPoC to run locally
+ * or comment in method `parallelizationPoC` to run locally
  *
  */
 object Main extends App with OCR with Spell with NLP with Natty {
