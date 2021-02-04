@@ -27,6 +27,7 @@ import java.nio.file.Paths
 import javax.imageio.ImageIO
 import scala.collection.parallel.CollectionConverters._
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 
 /**
@@ -95,7 +96,7 @@ object Main extends App with OCR with Spell with NLP with Natty {
 
   def extractDates = Flow[OcrSuggestionsPersons].map(ocr => {
     val sentences = sentenceDetector.sentDetect(ocr.ocr.replaceAll("\n", " ")).toList
-    import scala.collection.JavaConverters._
+
     val dates = sentences.map(sentence => parser.parse(sentence))
       .flatMap(dateGroups => dateGroups.asScala.toList)
       .map(dateGroup => (dateGroup.getDates().asScala.toList.map(_.toString()), dateGroup.getText()))
@@ -105,7 +106,6 @@ object Main extends App with OCR with Spell with NLP with Natty {
 
   def spellCheck = Flow[String].map(ocr => {
     logger.info(s"Before spellCheck: $ocr")
-    import scala.collection.JavaConverters._
     val words: Set[String] = ocr.replaceAll("-\n", "").replaceAll("\n", " ").replaceAll("-"," ").split("\\s+")
       .map(_.replaceAll(
       "[^a-zA-Z'’\\d\\s]", "") // Remove most punctuation
@@ -150,14 +150,15 @@ object Main extends App with OCR with Spell with NLP with Natty {
 
       def tempDestination(fileInfo: FileInfo): File = File.createTempFile(fileInfo.fileName, ".tmp.server")
 
-      // fileUpload hangs with latest akka http version, revert to tmp storing
+      //TODO fileUpload hangs with latest akka http version, revert to tmp storing
+      //However, this is not ideal for the throughput...
       storeUploadedFile("fileUpload", tempDestination) {
         case (_, uploadedFile: File) =>
           logger.info(s"Stored uploaded tmp file: ${uploadedFile.getName}")
 
           //TODO Handle retry
           val hapiFlow = Flow[OcrSuggestionsPersons]
-            .mapAsync(1)(each => {
+            .mapAsync(2)(each => {
               HapiClient.prepareAndUpload(each, uploadedFile.toPath.toString)
               Future(each)
             })
@@ -199,7 +200,7 @@ object Main extends App with OCR with Spell with NLP with Natty {
   // PoC to try parallelization
   //parallelizationPoC()
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+  val bindingFuture = Http().newServerAt("localhost", 8080).bindFlow(route)
   bindingFuture.onComplete {
     case Success(b) =>
       logger.info("Server started, listening on: " + b.localAddress)
