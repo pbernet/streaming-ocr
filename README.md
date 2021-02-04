@@ -2,7 +2,7 @@
 
 Additional features of this fork:
 * Bumped libs
-* PoC for parallelization
+* PoC for parallelization. Spoiler: Does not speed up things
 * Assuming the ocr contains medical content: upload to FHIR R4 server: http://hapi.fhir.org/baseR4
 
 Tmp removed feature:
@@ -10,6 +10,10 @@ Tmp removed feature:
 
 The two main classes may be started directly from the IntelliJ IDE.
 [GraalVM](https://www.graalvm.org/downloads) was used to run it locally on Mac.
+  
+
+Search uploaded content on public FHIR server, eg
+http://hapi.fhir.org/baseR4/DocumentReference/1845301/_history/1
 
 
 ## Up and running | Mac OS

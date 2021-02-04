@@ -21,7 +21,7 @@ val bytedecoPresetLibs = Seq(
 
 libraryDependencies ++= bytedecoPresetLibs
 
-libraryDependencies += "net.sourceforge.tess4j" % "tess4j" % "4.5.1"
+libraryDependencies += "net.sourceforge.tess4j" % "tess4j" % "4.5.4"
 libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.6.3"
 libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % "2.6.3"
 libraryDependencies += "com.typesafe.akka" %% "akka-http"   % "10.1.11"

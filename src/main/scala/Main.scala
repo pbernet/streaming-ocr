@@ -1,7 +1,3 @@
-import java.awt.image.BufferedImage
-import java.io.File
-import java.nio.file.Paths
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
@@ -13,7 +9,6 @@ import akka.stream.scaladsl.{FileIO, Flow, Sink, Source, StreamConverters}
 import akka.{Done, NotUsed}
 import com.joestelmach.natty.Parser
 import com.recognition.software.jdeskew.{ImageDeskew, ImageUtil}
-import javax.imageio.ImageIO
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.util.ImageHelper
 import opennlp.tools.namefind.{NameFinderME, TokenNameFinderModel}
@@ -26,12 +21,17 @@ import org.bytedeco.javacv.Java2DFrameUtils
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
+import java.awt.image.BufferedImage
+import java.io.File
+import java.nio.file.Paths
+import javax.imageio.ImageIO
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 
 /**
- * Start [[StreamingUploadClient]] to generate traffic
+ * Start [[StreamingUploadClient]] to generate traffic via HTTP
+ * or comment in method parallelizationPoC to run locally
  *
  */
 object Main extends App with OCR with Spell with NLP with Natty {
@@ -104,14 +104,14 @@ object Main extends App with OCR with Spell with NLP with Natty {
   })
 
   def spellCheck = Flow[String].map(ocr => {
-    println(s"Before spellCheck: $ocr")
+    logger.info(s"Before spellCheck: $ocr")
     import scala.collection.JavaConverters._
     val words: Set[String] = ocr.replaceAll("-\n", "").replaceAll("\n", " ").replaceAll("-"," ").split("\\s+")
       .map(_.replaceAll(
       "[^a-zA-Z'’\\d\\s]", "") // Remove most punctuation
       .trim)
       .filter(!_.isEmpty).toSet
-      println(s"words: $words")
+      logger.info(s"words: $words")
     val misspelled = words.filter(word => !speller.isCorrect(word))
     val suggestions: Set[Map[String, List[String]]] = misspelled.map(mis => {
       Map(mis -> speller.suggest(mis).asScala.toList)
@@ -119,8 +119,9 @@ object Main extends App with OCR with Spell with NLP with Natty {
     OcrSuggestions(ocr, suggestions)
   })
 
-  //Limit is 2 on my mac, if set higher it crashes
-  def imageOcr = Flow[BufferedImage].mapAsync(2)(each => Future(tesseract().doOCR(each)))
+  // It seems as if tesseract is not able to run things in parallel, there is no performance gain
+  val numberOfCores: Int = Runtime.getRuntime.availableProcessors
+  def imageOcr = Flow[BufferedImage].mapAsync(1)(each => Future(tesseract().doOCR(each)))
 
   def imageSink(path:String, format:String = "png") = Sink.foreachAsync[BufferedImage](4)(bi => {
     Future(ImageIO.write(bi, format, new File(path)))
@@ -188,22 +189,22 @@ object Main extends App with OCR with Spell with NLP with Natty {
   private def parallelizationPoC() = {
     (1 to 10).par.foreach(each => {
       logger.info(s"Start processing: $each")
-      val image = ImageIO.read(Paths.get(s"./src/main/resources/$resourceFileName").toFile)
+      val image = ImageIO.read(Paths.get(s"src/main/resources/$resourceFileName").toFile)
       val ocr = Source.single(image).via(imagePreProcessFlow).via(ocrFlow)
       val done: Future[Done] = ocr.runWith(Sink.ignore)
       logWhen(done, each)
     })
   }
 
-  //PoC to prove parallelization
+  // PoC to try parallelization
   //parallelizationPoC()
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
   bindingFuture.onComplete {
     case Success(b) =>
-      println("Server started, listening on: " + b.localAddress)
+      logger.info("Server started, listening on: " + b.localAddress)
     case Failure(e) =>
-      println(s"Server could not bind to localhost:8080. Exception message: ${e.getMessage}")
+      logger.info(s"Server could not bind to localhost:8080. Exception message: ${e.getMessage}")
       system.terminate()
   }
 }
@@ -214,10 +215,13 @@ case class OcrSuggestionsPersonsDates(ocr:String, suggestions: Set[Map[String, L
 
 trait OCR {
 
-  //It looks as if we need separate "Tesseract contexts"
+  // We need separate "Tesseract contexts" hence def
   def tesseract(): Tesseract = {
     val tess = new Tesseract
+    // On mac: brew install|upgrade tesseract
     tess.setDatapath("/usr/local/Cellar/tesseract/4.1.1/share/tessdata/")
+    // Fallback if the resolution info is not in the metadata
+    tess.setTessVariable("user_defined_dpi","300")
     tess
   }
 }
